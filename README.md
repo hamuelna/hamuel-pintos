@@ -6,7 +6,7 @@ Git Repo for pintos for use in ICCS222
 - - -
 Threads documentation will be up soon read at the DESIGNDOC in the thread folder but before then you can also 
 read this, this is some idea before implementing
-  *Introduction
+  _Introduction_
   ------------------------
    when the thread is started, the thread sleep we first do a thread_block on it initially
   and wake it up after it is time when it need to wake up.
@@ -18,7 +18,7 @@ read this, this is some idea before implementing
   should be at the head of the list because we will wake up the thread that is at the head of the
   tail first 
   
-  *Structure
+  _Structure_
   ------------------------
   we need a struct to keep the ticks and the thread_id of the timersleep to unblock it at the right time
   i.e.
@@ -43,7 +43,7 @@ read this, this is some idea before implementing
   When we remove the thread from the waiting queue we use list_pop_front to remove the list from the beginning of
   the list
 
-  *Implementation
+  _Implementation_
   -------------------------
   we make global variable call struct list *wait_list = malloc(sizeof(struct list)); 
   and init the list init_list(wait_list)

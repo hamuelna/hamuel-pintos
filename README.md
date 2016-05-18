@@ -3,10 +3,10 @@ Git Repo for pintos for use in ICCS222
 
 #Project 1
 ## Hamuel and Karn Team
-
+- - -
 Threads documentation will be up soon read at the DESIGNDOC in the thread folder but before then you can also 
 read this, this is some idea before implementing
-  Introduction
+  *Introduction
   ------------------------
    when the thread is started, the thread sleep we first do a thread_block on it initially
   and wake it up after it is time when it need to wake up.
@@ -18,14 +18,17 @@ read this, this is some idea before implementing
   should be at the head of the list because we will wake up the thread that is at the head of the
   tail first 
   
-  Structure
+  *Structure
   ------------------------
   we need a struct to keep the ticks and the thread_id of the timersleep to unblock it at the right time
-  i.e. struct sleeper {
+  i.e.
+  <pre><code>
+  struct sleeper {
     int_t64 start;
     int_t64 ticks;
     thread *this_th;
   }
+  </code></pre>
 
   Therefore we can check it by if timer_elasped(start) < sleeper[i].th_id, therefore we will always 
   check the head only which will take O(1) although it might take O(n) when we add the thread into the queue
@@ -40,13 +43,13 @@ read this, this is some idea before implementing
   When we remove the thread from the waiting queue we use list_pop_front to remove the list from the beginning of
   the list
 
-  Implementation
+  *Implementation
   -------------------------
   we make global variable call struct list *wait_list = malloc(sizeof(struct list)); 
   and init the list init_list(wait_list)
   to append to the list we can do list_insert_ordered(wait_list, &sleeper, less, aux) which runs in O(n)
   we need to make a new function to compare the data using list_less_func
-
+  <pre><code>
   list_less_func my_comparator(const struct list_elem *a,const struct list_elem *b,void *aux) {
     we know that list_elem is a sleeper type therefore we can do but we should cast it just in case
     struct sleeper as = (struct sleeper *)a
@@ -59,6 +62,7 @@ read this, this is some idea before implementing
     else
       return false
   }
+  </code></pre>
 
   aux data can be elem = (sleeper *) some_elts
   

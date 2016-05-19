@@ -139,7 +139,6 @@ struct thread
 </code></pre>
 
 _Implementation_
-
 - - -
 
 For normal donation (try to handle donation)

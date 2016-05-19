@@ -6,10 +6,8 @@
 				   
 ---- GROUP ----
 
->> Fill in the names and email addresses of your group members.
-
-Worapol Boontanonda <agentzh2m@gmail.com>
-Nattakarn Klongyut <nattakarn.kl@gmail.com>
+Worapol Boontanonda <agentzh2m@gmail.com> 5780431
+Nattakarn Klongyut <nattakarn.kl@gmail.com> 5780130
 
 ---- PRELIMINARIES ----
 
@@ -29,21 +27,67 @@ Nattakarn Klongyut <nattakarn.kl@gmail.com>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+_Struct_
+----------------------------------
+  we need a struct to keep the ticks and the thread_id of the timersleep to unblock it at the right time
+  
+  struct sleeper {
+    int_t64 start;
+    int_t64 ticks;
+    thread *this_th;
+  }
+
+
+we make global variable called 
+	struct list *wait_list = malloc(sizeof(struct list)); 
+  and 
+  	init the list init_list(wait_list)
+  to append to the list, so that we can do list_insert_ordered(wait_list, &sleeper, less, aux) which will append thread in oder
+
+we create a new function to compare the data using list_less_func
+
+	list_less_func my_comparator(const struct list_elem *a,const struct list_elem *b,void *aux) {
+
+			    //we know that list_elem is a sleeper type therefore we can do but we should cast it just in case
+
+			    struct sleeper as = (struct sleeper *)a
+			    struct sleeper bs = (struct sleeper *)b
+			    int_t64 a_timeleft = timer_elasped(as.start) - as.ticks
+			    int_t64 b_timeleft = timer_elasped(bs.start) - bs.ticks
+
+			    //we ordered the list by the amount of time that is left before it need to wake up
+
+			    if(a_timeleft < b_timeleft)
+			      return true
+			    else
+			      return false
+ 			 }
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to timer_sleep(),
 >> including the effects of the timer interrupt handler.
 
+	when timer_sleep() is called, it will append the current thread into waiting queue
+	and then block the thread
+
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
+
+	make the thread sleep and wait until it reach the time to be ready.
+	then we append this thread into ready queue
 
 ---- SYNCHRONIZATION ----
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
+	we block the current thread to prevent other thread from calling timer_sleep()
+	then when the current thread is appended into the waiting queue,
+	then we unblock that current thread to allow the next one to call
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
+
 
 ---- RATIONALE ----
 

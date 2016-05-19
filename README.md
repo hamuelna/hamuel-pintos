@@ -91,19 +91,88 @@ read this, this is some idea before implementing
 _Introduction_
 - - -
 
-Fixing priority inversion is a big problem, therefore we need a rough idea how to fix it
-First problem- We need to know X thread is waiting for another Y thread the wait list is kept in the 
-semaphore struct keep a value and the wait list and it is initialize when sema_init was run which 
-init the semaphore struct 
+Every thread will now have a priority therefore the thread with more priority will run first, therefore we need
+to insert things into the ready queue differently we should insert it into some kind of particular order 
+we can use list_insert_ordered or sort after each donation
 
-To know which thread is waiting for another thread, when we sema_down thread will be on the waiting list 
-on the initialize semaphore, the only way to unlock is to do sema_up which pop the thread from the 
-waiting list and unblock it 
+The biggest problem is that if a higher priority thread is trying to run however it need to wait for a lock that is 
+in a thread with a lower priority that will unlikely to get CPU time we must donate our priority number to the thread that is
+blocking the thread with the higher priority therefore our higher priority thread don't get block forever 
 
-sema_init is adding the thread into the lock master global array of lock master thread
+sample of a donation
+Thread A -> 40, Thread B -> 21 if Thread A need to wait for lock in Thread B in order for Thread A to be able to run we need
+to give Thread B our priority number, we change thread B to 40 temporary then change it down to 21 when we release the lock 
 
+Solution to priority inversion
+We will donate when we run lock_acquire() in synch.c to see who currently hold the lock 
+(lock -> holder) will return the thread that is the owner of the lock after that we compare the priority of both thread
+(thread _> priority) if the priority of the thread that hold the lock is less than the thread that is trying to acquire the lock we donate the priority to the thread that is currently holding the lock 
 
+After donating the priority we need to set the thread priority that get donated back to its original value by having a 
+data structure to keep it the original value before donation this will get trigger in lock_release() by setting priority value back to its original value
 
+Solution to nested priority inversion
+we will use a pointer to track our nested donation using the prev_thread pointer, if the thread is waiting i.e. Thread C
+need to Wait for Thread B and Thread B need to wait for Thread A unfortunately Thread B has a priority less then Thread C and Thread A has a priority less than Thread B Thread C need to donate to Thread B then Thread B need to donate to Thread A so that all of them get unlock in the end if they are waiting
+
+thread -> prev_thread will point to Thread that is currently waiting (need to be unlock) 
+
+_Structure_
+- - -
+
+Here I have taken the original thread struct and modify it here I have remove the variable that does not concern our project
+here prev priority will keep the previous priority number 
+
+<pre><code>
+
+struct thread
+  {
+    /* Owned by thread.c. */
+    int priority;                       /* Priority. */
+    struct list_elem allelem;           /* List element for all threads list. */
+    int prev_priority; /* we add this to keep track of our previous priority number */
+    thread *prev_thread; /*keep the 
+    /* Shared between thread.c and synch.c. */
+    struct list_elem elem;              /* List element. */
+  };
+
+</code></pre>
+
+_Implementation_
+- - -
+
+For normal donation (try to handle donation)
+the only time when we need to donate is when we do lock_acquire this is how 
+we could implement lock_acquire this way 
+
+<pre><code>
+	if(lock -> holder != NULL){
+		thread *curthread = lock -> holder
+		thread *newthread = thread_current()
+		if(curthread -> priority < newthread -> priority ) {
+			//if the current thread have the priority less than the new thread (which mean it need to wait)
+			//time for the new thread to donate to current thread 
+			curthread -> prev_priority = curthread -> priority
+			curthread -> priority = newthread -> priority
+			newthread -> prev_thread = curthread
+			curthread -> prev_thread = NULL
+		}else{
+			newthread -> prev_priority = NULL
+		}
+	}
+</code>
+</pre>
+
+lock_release change the low priority thread number back to it original number
+
+<pre><code>
+	thread *my_thread = lock -> holder
+	if(my_thread -> prev_priority != NULL ){
+		my_thread -> priority = my_thread -> prev_priority
+		my_thread -> prev_priority = NULL
+	}
+	lock -> holder = NULL
+</code></pre>
 
 
 ---------------------

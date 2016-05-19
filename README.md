@@ -136,7 +136,8 @@ struct thread
     struct list_elem elem;              /* List element. */
   };
 
-</code></pre>
+</code>
+</pre>
 
 _Implementation_
 - - -

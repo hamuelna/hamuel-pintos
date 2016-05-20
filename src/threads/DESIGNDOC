@@ -88,7 +88,7 @@ we create a new function to compare the data using list_less_func
 >> A5: How are race conditions avoided when a timer interrupt occurs
 
 >> we put a sema_down or a lock when things are added into the waiting queue 
-because our timer_interrupt just check the head of our waiting list therefore the 
+because our timer_interrupt just check the head of our waiting list, therefore the 
 timer_interrupt will wait until we finish thread_block and add the thread information
 into the waiting queue list 
 
@@ -109,8 +109,8 @@ into the waiting queue list
 
  int prev_priority in struct thread 
 
- we added prev priority to keep the previous priority number before the donation if nothing is 
- donated it will be -1
+ we added prev priority to keep the previous priority number before the donation. 
+ if nothing is donated, it will be -1
 
  we use lock struct -> wait_list to track the nested thread  
 
@@ -125,6 +125,7 @@ H 		M 	 	L(holding the lock that H is waiting for)
 
 H donate its number to L 
 
+/* priority order */
 T63       
 |
 |--->T50
@@ -139,24 +140,25 @@ Top of the nest <---> Bottom of the nest
 >> B3: How do you ensure that the highest priority thread waiting for
 >> a lock, semaphore, or condition variable wakes up first?
 
-After the donation we reset the donated thread back to its original value so that the highest priority
-thread get to go first 
+After the donation, we reset the donated thread back to its original value so that the highest priority thread get to go first 
+
+In waiting list, the priorities should be sorted in order.
 
 >> B4: Describe the sequence of events when a call to lock_acquire()
 >> causes a priority donation.  How is nested donation handled?
 
-In this example T63 need to wait for T50 and T50 need to wait for T40 and T40 need to wait for T30
-when T63 run it tries to acquire lock, but then it check the lock holder that it has a lower priority or not 
-if yes it will check that T50 is waiting for other thread or not we will keep checking until there is no thread 
-waiting left or until the thread that is waiting have a higher priority than the top of the nested thread it will 
-keep donating 
+In this example, T63 need to wait for T50 and T50 need to wait for T40 and T40 need to wait for T30.
+when T63 run, it tries to acquire lock, but then it check the lock holder whether it has a lower priority or not. 
+if yes, it will check that T50 is waiting for other thread or not. 
+We will keep checking until there is no thread waiting left, or until the thread that is waiting have a higher priority than the top of the nested thread. It will 
+keep donating. 
 
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
 
-when we lock_release we will check if the thread have been donated or not if it is donated some priority 
-the prev_priority number will be greater than zero if not it will be -1, after we reset it back to its 
-original value the prev_priority will be set back to -1 to show that it was not donated anymore.
+when we lock_release, we will check if the thread have been donated or not. 
+If it is, donated some priority 
+the prev_priority number will be greater than zero if not it will be -1, after we reset it back to its original value, the prev_priority will be set back to -1 to show that it was not donated anymore.
 
 
 ---- SYNCHRONIZATION ----
@@ -165,8 +167,7 @@ original value the prev_priority will be set back to -1 to show that it was not 
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
 
-when some thread is setting the priority we lock the thread pointer after we finish setting the priority
-we unlock the thread pointer to allow a donation to be happen and change it donated value 
+when some thread is setting the priority, we lock the current thread pointer to avoid collision. Then after we finish setting the priority, we unlock the current thread pointer to allow the next thread to be set priority.
 
 ---- RATIONALE ----
 
@@ -210,15 +211,12 @@ ticks   A   B   C   A   B   C   to run
 >> in the table uncertain?  If so, what rule did you use to resolve
 >> them?  Does this match the behavior of your scheduler?
 
-There might be some case when the priority number is the same we let the cpu with the lower nice
-number run first and then the recent_cpu will increase which allow other CPU to run eventually
+There might be some case where 2 priority numbers are the same. We will let the cpu with the lower nice number run first and then the recent_cpu will increase, which allow other CPU to run eventually
 
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
 
-cost of scheduling outside the interrupt will affect performance beacuse the user cannot interact with the 
-system scheduling inside the interupt will allow the system to function the more we code outside the interrupt
-the slower the system become since it is lagging
+cost of scheduling outside the interrupt will affect performance beacuse the user cannot interact with the system scheduling inside. The interupt will allow the system to function The more we code outside the interrupt the slower the system become since it is lagging
 
 ---- RATIONALE ----
 
@@ -250,3 +248,4 @@ the quarter.
 >> students, either for future quarters or the remaining projects?
 
 >> Any other comments?
+No.

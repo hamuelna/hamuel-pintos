@@ -7,7 +7,6 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-  
 /* See [8254] for hardware details of the 8254 timer chip. */
 
 #if TIMER_FREQ < 19
@@ -29,7 +28,14 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+//prototype for the things we need to use
 
+list_less_func *sleep_comp(const struct list_elem *, const struct list_elem *, void *);
+//set global variable to do things
+
+/*Sleeping list for thread that is a sleep and not ready */
+static struct list waiting_lst;
+static struct lock wait_lock; //for syncing between timer_interupt and timer_sleep
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -37,6 +43,8 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  list_init (&waiting_lst); //init the list to keep sleeping thread
+  //lock_init(&wait_lock);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -76,6 +84,23 @@ timer_ticks (void)
   return t;
 }
 
+list_less_func *
+sleep_comp(const struct list_elem *a, const struct list_elem *b, void *aux){
+  struct thread *sl_a = list_entry(a, struct thread, elem);
+  struct thread *sl_b = list_entry(b, struct thread, elem);
+
+  //find the amount of time left of a and b
+  int64_t a_timeleft = (sl_a -> ticks) - timer_elapsed(sl_a -> start);
+  int64_t b_timeleft = (sl_b -> ticks) - timer_elapsed(sl_b -> start);
+
+  //we order the list by the amount of left before it need to wake up
+  if(a_timeleft < b_timeleft)
+    return true;
+  else
+    return false;
+
+}
+
 /* Returns the number of timer ticks elapsed since THEN, which
    should be a value once returned by timer_ticks(). */
 int64_t
@@ -90,11 +115,26 @@ void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
-
+  struct semaphore s; 
+  sema_init(&s, 1);
   ASSERT (intr_get_level () == INTR_ON);
-  printf("Amount of Ticks is %d \n", ticks);
+  //add the thread into a waiting queue so that it can be waken
+  struct thread *t = thread_current();
+  t -> start = start;
+  t -> ticks = ticks;
+  t -> th_sema = &s;
+  //lock_acquire(&wait_lock);
+  printf("in timer_sleep total_ticks: %d, starting_ticks: %d, thread_id: %d \n", t->ticks, t->start, t->tid);
+  list_insert_ordered(&waiting_lst, &t->elem, sleep_comp, NULL);
+  printf("Successfully insert thread number: %d\n", t->tid);
+  sema_down(&s);
+  //put the thread to sleep
+  //lock_release(&wait_lock);
+
+  /* original code incase anything fuck up 
   while (timer_elapsed (start) < ticks) 
     thread_yield ();
+  */
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -171,7 +211,21 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
-  
+  /*check the beginning of the list that the thread need to wake up yet or not 
+  the invariant is that the list is always ordered from need to wake soon to need to be wake up later */
+  //lock_acquire(&wait_lock);
+  //printf("Size of the list is: %d \n", list_size(&waiting_lst));
+  if(!list_empty(&waiting_lst)){
+    struct list_elem *elts = list_front(&waiting_lst);
+    struct thread *t = list_entry(elts, struct thread, elem);
+    printf("\nChecking the list in front of th num %d\n", t->tid );
+    printf("in intr total_ticks: %d, starting_ticks: %d, thread_num: %d \n", t->ticks, t->start, t->tid);
+    printf("Time pass since start for tid %d: %d\n", t->tid, timer_elapsed(t->start));
+    if (timer_elapsed (t->start) > t->ticks) //wake up the thread when it is time to wake up
+      sema_up(t->th_sema);
+      list_pop_front(&waiting_lst);
+  }
+  //lock_release(&wait_lock);
   ticks++;
   thread_tick ();
 }

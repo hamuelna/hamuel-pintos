@@ -92,7 +92,7 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    struct semaphore *th_sema;
+    //struct semaphore *th_sema;
     /*added things for alarm clock waiting list */
     int64_t start;
     int64_t ticks;

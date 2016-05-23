@@ -44,7 +44,7 @@ timer_init (void)
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
   list_init (&waiting_lst); //init the list to keep sleeping thread
-  //lock_init(&wait_lock);
+  
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -116,18 +116,24 @@ timer_sleep (int64_t ticks)
 {
   int64_t start = timer_ticks ();
   struct semaphore s; 
-  sema_init(&s, 1);
-  ASSERT (intr_get_level () == INTR_ON);
-  //add the thread into a waiting queue so that it can be waken
-  struct thread *t = thread_current();
-  t -> start = start;
-  t -> ticks = ticks;
-  t -> th_sema = &s;
-  //lock_acquire(&wait_lock);
-  printf("in timer_sleep total_ticks: %d, starting_ticks: %d, thread_id: %d \n", t->ticks, t->start, t->tid);
-  list_insert_ordered(&waiting_lst, &t->elem, sleep_comp, NULL);
-  printf("Successfully insert thread number: %d\n", t->tid);
-  sema_down(&s);
+  if(timer_elapsed(start) < start || ticks!=0){
+    sema_init(&s, 1);
+    ASSERT (intr_get_level () == INTR_ON);
+    //add the thread into a waiting queue so that it can be waken
+    struct thread *t = thread_current();
+    t -> start = start;
+    t -> ticks = ticks;
+    //lock_acquire(&wait_lock);
+    ASSERT (intr_disable() == INTR_ON);
+    // printf("in timer_sleep total_ticks: %jd, starting_ticks: %jd, thread_id: %zu \n", t->ticks, t->start, t->tid);
+    list_insert_ordered(&waiting_lst, &t->elem, sleep_comp, NULL);
+    // printf("Successfully insert thread number: %zu\n", t->tid);
+    ASSERT (t->status == THREAD_RUNNING);
+    thread_block();
+    // printf("The thread has woken up after the sleep\n");
+    ASSERT (intr_enable() == INTR_OFF);
+  }
+  
   //put the thread to sleep
   //lock_release(&wait_lock);
 
@@ -213,19 +219,24 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   /*check the beginning of the list that the thread need to wake up yet or not 
   the invariant is that the list is always ordered from need to wake soon to need to be wake up later */
-  //lock_acquire(&wait_lock);
-  //printf("Size of the list is: %d \n", list_size(&waiting_lst));
   if(!list_empty(&waiting_lst)){
+    //lock_try_acquire(&wait_lock);
     struct list_elem *elts = list_front(&waiting_lst);
     struct thread *t = list_entry(elts, struct thread, elem);
-    printf("\nChecking the list in front of th num %d\n", t->tid );
-    printf("in intr total_ticks: %d, starting_ticks: %d, thread_num: %d \n", t->ticks, t->start, t->tid);
-    printf("Time pass since start for tid %d: %d\n", t->tid, timer_elapsed(t->start));
-    if (timer_elapsed (t->start) > t->ticks) //wake up the thread when it is time to wake up
-      sema_up(t->th_sema);
+    // if(t->status == THREAD_RUNNING)
+    //   printf("The blocked thread is running, tid: %zu\n", t->tid);
+    // else if (t->status == THREAD_READY)
+    //   printf("The blocked thread is still in the ready queue, tid: %zu\n", t->tid);
+    // else
+    //   printf("The block thread is probably blocked, tid: %zu\n", t->tid);
+    ASSERT(t->status == THREAD_BLOCKED);
+    // printf("in intr total_ticks: %jd, time: %jd, thread_num: %zu \n", t->ticks, timer_elapsed(t->start), t->tid);
+    if (timer_elapsed (t->start) > t->ticks){
+      // printf("Waking up thread id: %zu\n", t->tid);
       list_pop_front(&waiting_lst);
+      thread_unblock(t);
+    } 
   }
-  //lock_release(&wait_lock);
   ticks++;
   thread_tick ();
 }

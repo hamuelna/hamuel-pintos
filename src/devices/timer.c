@@ -35,7 +35,6 @@ list_less_func *sleep_comp(const struct list_elem *, const struct list_elem *, v
 
 /*Sleeping list for thread that is a sleep and not ready */
 static struct list waiting_lst;
-static struct lock wait_lock; //for syncing between timer_interupt and timer_sleep
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -115,23 +114,20 @@ void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
-  struct semaphore s; 
   if(timer_elapsed(start) < start || ticks!=0){
-    sema_init(&s, 1);
     ASSERT (intr_get_level () == INTR_ON);
     //add the thread into a waiting queue so that it can be waken
     struct thread *t = thread_current();
     t -> start = start;
     t -> ticks = ticks;
     //lock_acquire(&wait_lock);
-    ASSERT (intr_disable() == INTR_ON);
+    enum intr_level old_level = intr_disable();
     // printf("in timer_sleep total_ticks: %jd, starting_ticks: %jd, thread_id: %zu \n", t->ticks, t->start, t->tid);
     list_insert_ordered(&waiting_lst, &t->elem, sleep_comp, NULL);
     // printf("Successfully insert thread number: %zu\n", t->tid);
-    ASSERT (t->status == THREAD_RUNNING);
     thread_block();
     // printf("The thread has woken up after the sleep\n");
-    ASSERT (intr_enable() == INTR_OFF);
+    intr_set_level(old_level);
   }
   
   //put the thread to sleep
@@ -231,10 +227,16 @@ timer_interrupt (struct intr_frame *args UNUSED)
     //   printf("The block thread is probably blocked, tid: %zu\n", t->tid);
     ASSERT(t->status == THREAD_BLOCKED);
     // printf("in intr total_ticks: %jd, time: %jd, thread_num: %zu \n", t->ticks, timer_elapsed(t->start), t->tid);
-    if (timer_elapsed (t->start) > t->ticks){
+    while (timer_elapsed (t->start) >= t->ticks-1){
       // printf("Waking up thread id: %zu\n", t->tid);
       list_pop_front(&waiting_lst);
       thread_unblock(t);
+      if(!list_empty(&waiting_lst)){
+        elts = list_front(&waiting_lst);
+        t = list_entry(elts, struct thread, elem);
+      }else{
+        break;
+      }
     } 
   }
   ticks++;

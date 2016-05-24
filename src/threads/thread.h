@@ -96,6 +96,7 @@ struct thread
     /*added things for alarm clock waiting list */
     int64_t start;
     int64_t ticks;
+    int64_t nice;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -141,5 +142,6 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
 
 #endif /* threads/thread.h */

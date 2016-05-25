@@ -27,41 +27,15 @@ Nattakarn Klongyut <nattakarn.kl@gmail.com> 5780130
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-_Struct_
-----------------------------------
-  we need a struct to keep the ticks and the thread_id of the timersleep to unblock it at the right time
-  
-  struct sleeper {
-    int_t64 start;
-    int_t64 ticks;
-    thread *this_th;
-  }
-
+we add ticks and start in thread struct (in thread.h)
 
 we make global variable called 
-	struct list *wait_list = malloc(sizeof(struct list)); 
-  and 
-  	init the list init_list(wait_list)
-  to append to the list, so that we can do list_insert_ordered(wait_list, &sleeper, less, aux) which will append thread in oder
+	struct list *wait_list in list.c (that will keep all the sleeping thread)
 
 we create a new function to compare the data using list_less_func
-
-	list_less_func my_comparator(const struct list_elem *a,const struct list_elem *b,void *aux) {
-
-			    //we know that list_elem is a sleeper type therefore we can do but we should cast it just in case
-
-			    struct sleeper as = (struct sleeper *)a
-			    struct sleeper bs = (struct sleeper *)b
-			    int_t64 a_timeleft = timer_elasped(as.start) - as.ticks
-			    int_t64 b_timeleft = timer_elasped(bs.start) - bs.ticks
-
-			    //we ordered the list by the amount of time that is left before it need to wake up
-
-			    if(a_timeleft < b_timeleft)
-			      return true
-			    else
-			      return false
+	list_less_func sleep_comp(const struct list_elem *a,const struct list_elem *b,void *aux) {
  			 }
+this function is used to compare the time left when we use insert ordered which is a part of the list.c library
 
 ---- ALGORITHMS ----
 
@@ -69,28 +43,32 @@ we create a new function to compare the data using list_less_func
 >> including the effects of the timer interrupt handler.
 
 	when timer_sleep() is called, it will append the current thread into waiting queue
-	and then block the thread
+	and then block the thread, the interrupt handler check the waiting to list to see
+	which thread is ready to be woken up if it is ready to be awoken up in that tick 
+	thread_unblock is call to unblock the thread
 
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
 
-	make the thread sleep and wait until it reach the time to be ready.
-	then we append this thread into ready queue
+	We make a waiting list which are ordered from thread that need to be awaken up first to 
+	thread that need to be awaken up later (these thread are kept near the tail)
+	HEAD(thread that need to be wake up first) --> TAIL (thread that need to be wake up later)
+	therefore when we check for the thread that need to be woken up we don't need to check the whole
+	list we just check the thread that need to be wake up only, we don't need to iterate through the whole 
+	waiting list since we ordered it in that kind of way. 
 
 ---- SYNCHRONIZATION ----
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
-	we block the current thread to prevent other thread from calling timer_sleep()
-	then when the current thread is appended into the waiting queue,
-	then we unblock that current thread to allow the next one to append
+	We append the thread into the same list (we disable interrupt to block the thread)
+	therefore the critical section of the global wait list is protected since we disable the
+	interrupt
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 
->> we put a sema_down or a lock when things are added into the waiting queue 
-because our timer_interrupt just check the head of our waiting list, therefore the 
-timer_interrupt will wait until we finish thread_block and add the thread information
-into the waiting queue list 
+>> we disable the interupt when we add the thread into the sleeping queue
+after we finish sleeping the queue we re-enable the interrupt 
 
 
 ---- RATIONALE ----

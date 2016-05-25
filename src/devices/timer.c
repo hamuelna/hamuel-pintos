@@ -237,6 +237,11 @@ timer_interrupt (struct intr_frame *args UNUSED)
       thread_unblock(t);
     } 
   }
+  if (ticks%4 == 0){
+    running_thread()->recent_cpu+=4;
+
+  }
+
   ticks++;
   thread_tick ();
 }

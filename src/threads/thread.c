@@ -356,7 +356,9 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED) 
 {
-  /* Not yet implemented. */
+  /* make t point to niceness */
+  struct thread *t = thread_current();
+  t->niceness = nice;
 }
 
 /* Returns the current thread's nice value. */

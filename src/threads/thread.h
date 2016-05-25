@@ -96,7 +96,7 @@ struct thread
     /*added things for alarm clock waiting list */
     int64_t start;
     int64_t ticks;
-    int64_t nice;
+    int64_t niceness;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

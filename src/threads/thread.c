@@ -63,7 +63,7 @@ bool thread_mlfqs;
 static void kernel_thread (thread_func *, void *aux);
 
 static void idle (void *aux UNUSED);
-struct thread *running_thread (void);
+static struct thread *running_thread (void);
 static struct thread *next_thread_to_run (void);
 static void init_thread (struct thread *, const char *name, int priority);
 static bool is_thread (struct thread *) UNUSED;
@@ -456,7 +456,7 @@ kernel_thread (thread_func *function, void *aux)
 }
 
 /* Returns the running thread. */
-struct thread *
+static struct thread *
 running_thread (void) 
 {
   uint32_t *esp;

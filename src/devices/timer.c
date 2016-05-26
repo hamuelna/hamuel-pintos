@@ -241,7 +241,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   }
 
   if (ticks%4 == 0){
-    running_thread()->recent_cpu = running_thread()->recent_cpu+=4;
+    thread_current()->recent_cpu = thread_current()->recent_cpu+=4;
   }
 
   ticks++;

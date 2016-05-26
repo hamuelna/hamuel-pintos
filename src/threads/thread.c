@@ -97,6 +97,7 @@ thread_init (void)
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
+  initial_thread -> recent_cpu = 0;
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
@@ -394,15 +395,16 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED)
 {
-  /* Not yet implemented. */
+  /* make t point to niceness */
+  struct thread *t = thread_current();
+  t->niceness = nice;
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void)
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current() -> niceness;
 }
 
 /* Returns 100 times the system load average. */
@@ -468,8 +470,9 @@ kernel_thread (thread_func *function, void *aux)
 }
 
 /* Returns the running thread. */
-struct thread *
-running_thread (void)
+
+static struct thread *
+running_thread (void) 
 {
   uint32_t *esp;
 

@@ -21,6 +21,9 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+/* create global variable load_avg*/
+static int64_t load_avg;
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -399,16 +402,23 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void)
 {
-  /* Not yet implemented. */
+  /* get size of ready_thread */
+  size_t ready_threads = list_size(&ready_list)+1;
+  /* load_avg = (59/60)*load_avg + (1/60)*ready_threads */
+  load_avg = (59/60)*load_avg + (1/60)*ready_threads;
   return 0;
 }
 
-/* Returns 100 times the current thread's recent_cpu value. */
+/* Returns 100 times the current thread's recent_cpu value. 
+    put in the formula in to calculate priority by using nice and recent_cpu*/
 int
 thread_get_recent_cpu (void)
 {
-  /* Not yet implemented. */
-  return 0;
+  /*  */
+  int nice = thread_current() -> niceness;
+  int recent_cpu = thread_current() -> recent_cpu;
+  recent_cpu = (2*load_avg)/(2*load_avg+1)*(recent_cpu+nice);
+  return recent_cpu*100;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.

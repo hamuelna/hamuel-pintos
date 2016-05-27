@@ -344,11 +344,6 @@ thread_yield (void)
     list_insert_ordered (&ready_list, &cur->elem,(list_less_func *) priority_comp, NULL);
   }
 
-  struct list_elem *e;
-    for (e=list_begin(&ready_list); e!=list_end(&ready_list); e=list_next(e)){
-      struct thread *tt = list_entry(e, struct thread, elem);
-  }
-
   cur->status = THREAD_READY;
   schedule ();
 

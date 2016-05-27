@@ -243,7 +243,11 @@ timer_interrupt (struct intr_frame *args UNUSED)
   if (ticks%4 == 0){
     thread_current()->recent_cpu = thread_current()->recent_cpu+=4;
   }
+/*
+  if (timer_ticks()%TIMER_FREQ==0){
 
+  }
+*/
   ticks++;
   thread_tick ();
 }

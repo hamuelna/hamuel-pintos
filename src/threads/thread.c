@@ -406,7 +406,7 @@ thread_get_load_avg (void)
   size_t ready_threads = list_size(&ready_list)+1;
   /* load_avg = (59/60)*load_avg + (1/60)*ready_threads */
   load_avg = (59/60)*load_avg + (1/60)*ready_threads;
-  return 0;
+  return load_avg*100;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. 

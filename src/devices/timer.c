@@ -208,6 +208,18 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
+
+
+/* create new func to calculate priority */
+void
+set_priority (struct thread *t)
+{
+  int recent_cpu  = t->recent_cpu;
+  int nice = t->niceness;
+  int prio = PRI_MAX-(recent_cpu/4)-(nice*2);
+  t -> priority = prio;
+}
+
 
 /* Timer interrupt handler. */
 static void
@@ -242,12 +254,19 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
   if (ticks%4 == 0){
     thread_current()->recent_cpu = thread_current()->recent_cpu+=4;
+    thread_foreach(set_priority,0);
   }
-/*
-  if (timer_ticks()%TIMER_FREQ==0){
 
+  /* update each threads' recent_cpu every 1 second*/
+  if (TIMER_FREQ==100){
+    thread_foreach(thread_get_recent_cpu, 0);
   }
-*/
+
+  /*  */
+  if (timer_ticks()%TIMER_FREQ==0){
+    thread_get_recent_cpu();
+  }
+
   ticks++;
   thread_tick ();
 }

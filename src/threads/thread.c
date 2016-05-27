@@ -11,6 +11,8 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/fixed_point.h"
+
 // #include "devices/timer.c"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -100,6 +102,7 @@ thread_init (void)
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   initial_thread -> recent_cpu = 0;
+  initial_thread -> niceness = 0;
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
@@ -403,9 +406,12 @@ int
 thread_get_load_avg (void)
 {
   /* get size of ready_thread */
-  size_t ready_threads = list_size(&ready_list)+1;
-  /* load_avg = (59/60)*load_avg + (1/60)*ready_threads */
-  load_avg = (59/60)*load_avg + (1/60)*ready_threads;
+  size_t ready_threads = CONVERT_TO_FIXPOINT(list_size(&ready_list)+1);
+  int load_avg = CONVERT_TO_FIXPOINT(load_avg);
+  //load_avg = ((59/60)*load_avg) + ((1/60)*ready_threads);
+  load_avg = MULT(DIV(59,60),load_avg) + MULT(DIV(1,60),ready_threads);
+
+  load_avg = CONVERT_TO_INT(load_avg);
   return load_avg*100;
 }
 
@@ -415,9 +421,20 @@ int
 thread_get_recent_cpu (void)
 {
   /*  */
-  int nice = thread_current() -> niceness;
-  int recent_cpu = thread_current() -> recent_cpu;
-  recent_cpu = (2*load_avg)/(2*load_avg+1)*(recent_cpu+nice);
+  int load_avg = CONVERT_TO_FIXPOINT(thread_get_load_avg());
+  int nice = CONVERT_TO_FIXPOINT(thread_current() -> niceness);
+  int recent_cpu = CONVERT_TO_FIXPOINT(thread_current() -> recent_cpu);
+  
+  // nice = CONVERT_TO_FIXPOINT(nice);
+  // recent_cpu = CONVERT_TO_FIXPOINT(recent_cpu);
+
+  recent_cpu = MULT(DIV(MULT(2,load_avg), MULT(2,load_avg)+1), recent_cpu)+nice; 
+  //recent_cpu = (2*load_avg)/(2*load_avg+1)*(recent_cpu+nice);
+  
+  recent_cpu = CONVERT_TO_INT(recent_cpu);
+  nice = CONVERT_TO_INT(nice);
+  load_avg = CONVERT_TO_INT(load_avg);
+
   return recent_cpu*100;
 }
 

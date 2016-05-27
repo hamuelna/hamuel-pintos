@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/fixed_point.h"
 /* See [8254] for hardware details of the 8254 timer chip. */
 
 #if TIMER_FREQ < 19
@@ -113,6 +114,8 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
+ // int sss = KARN55;
+//  printf(" Karnawdfjoasfasdof %d\n", sss);  
   int64_t start = timer_ticks ();
   if(timer_elapsed(start) < start || ticks!=0){
     ASSERT (intr_get_level () == INTR_ON);
@@ -216,7 +219,14 @@ set_priority (struct thread *t)
 {
   int recent_cpu  = t->recent_cpu;
   int nice = t->niceness;
-  int prio = PRI_MAX-(recent_cpu/4)-(nice*2);
+  int prio = 0;
+  prio = CONVERT_TO_FIXPOINT(prio);
+  recent_cpu = CONVERT_TO_FIXPOINT(recent_cpu);
+  nice = CONVERT_TO_FIXPOINT(nice);
+  //prio = PRI_MAX-(recent_cpu/4)-(nice*2);
+  prio = PRI_MAX-DIV(recent_cpu,4)-MULT(nice,2);
+  prio = CONVERT_TO_INT(prio);
+
   t -> priority = prio;
 }
 
@@ -253,18 +263,13 @@ timer_interrupt (struct intr_frame *args UNUSED)
   }
 
   if (ticks%4 == 0){
-    thread_current()->recent_cpu = thread_current()->recent_cpu+=4;
+    thread_current()->recent_cpu+=4;
     thread_foreach(set_priority,0);
   }
 
-  /* update each threads' recent_cpu every 1 second*/
-  if (TIMER_FREQ==100){
-    thread_foreach(thread_get_recent_cpu, 0);
-  }
-
-  /*  */
   if (timer_ticks()%TIMER_FREQ==0){
-    thread_get_recent_cpu();
+    thread_get_load_avg();
+    thread_foreach(thread_get_recent_cpu,0);
   }
 
   ticks++;

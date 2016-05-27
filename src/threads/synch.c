@@ -195,20 +195,6 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
-  struct semaphore lock_sema = lock->semaphore;
-  struct list lock_waiter = lock_sema.waiters;
-  struct list_elem *e;
-  //check all waiter and donate if the waiter priority is low
-  // printf("ptr of list end: %x\n", list_end(&lock_waiter) );
-  // for(e = list_begin(&lock_waiter); e != list_end(&lock_waiter); e = list_next(e)){
-  //     struct thread *t = list_entry(e, struct thread, elem);
-  //     printf("current ptr of e: %x\n", e);
-  //     if (t->priority < thread_current()->priority){
-  //       t->prev_priority = t->priority;
-  //       t->priority = thread_current()->priority;
-  //     }
-  // }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
 }
@@ -243,11 +229,9 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-  //when we release a lock check if the thread was donated or not
-  if (thread_current()->prev_priority != -1)
-    thread_current()->priority = thread_current()->prev_priority;
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+  
 }
 
 /* Returns true if the current thread holds LOCK, false

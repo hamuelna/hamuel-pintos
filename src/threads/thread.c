@@ -94,7 +94,6 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
   // list_init (&sleep_list);
-
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   initial_thread -> recent_cpu = 0;
@@ -206,15 +205,13 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   intr_set_level (old_level);
-
   /* Add to run queue. */
   thread_unblock (t);
-
-  //old_level = intr_disable();
+  old_level = intr_disable();
   if(t->priority >= running_thread()->priority){
     thread_yield();
   }
-  //intr_set_level(old_level);
+  intr_set_level(old_level);
 
   return tid;
 }
@@ -250,10 +247,8 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  //printf("Thread name %s, The priority %d\n", t->name, t->priority );
 
   list_insert_ordered (&ready_list, &t->elem,(list_less_func *) priority_comp, NULL);
-  //list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -285,7 +280,6 @@ struct thread *
 thread_current (void)
 {
   struct thread *t = running_thread ();
-
   /* Make sure T is really a thread.
      If either of these assertions fire, then your thread may
      have overflowed its stack.  Each thread has less than 4 kB
@@ -337,13 +331,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread){
-    //list_push_back (&ready_list, &cur->elem);
     list_insert_ordered (&ready_list, &cur->elem,(list_less_func *) priority_comp, NULL);
-  }
-
-  struct list_elem *e;
-    for (e=list_begin(&ready_list); e!=list_end(&ready_list); e=list_next(e)){
-      struct thread *tt = list_entry(e, struct thread, elem);
   }
 
   cur->status = THREAD_READY;
@@ -506,6 +494,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->prev_priority = -1;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }

@@ -24,7 +24,7 @@
 #define THREAD_MAGIC 0xcd6abf4b
 
 /* create global variable load_avg*/
-static int64_t load_avg;
+static int load_avg = 0;
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
@@ -80,6 +80,8 @@ void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 list_less_func *priority_comp(const struct list_elem *a, const struct list_elem *b, void *aux);
 
+void mlfqs_load_avg(void);
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -94,7 +96,6 @@ void
 thread_init (void)
 {
   ASSERT (intr_get_level () == INTR_OFF);
-
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -102,7 +103,6 @@ thread_init (void)
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   initial_thread -> recent_cpu = 0;
-  initial_thread -> niceness = 0;
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
@@ -390,15 +390,19 @@ void
 thread_set_nice (int nice UNUSED)
 {
   /* make t point to niceness */
-  struct thread *t = thread_current();
-  t->niceness = nice;
+  // struct thread *t = thread_current();
+  // t->niceness = nice;
+
+  thread_current() -> niceness = nice;
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void)
 {
-  return thread_current() -> niceness;
+  int temp = thread_current() -> niceness;
+
+  return temp;
 }
 
 /* Returns 100 times the system load average. */
@@ -406,36 +410,55 @@ int
 thread_get_load_avg (void)
 {
   /* get size of ready_thread */
-  size_t ready_threads = CONVERT_TO_FIXPOINT(list_size(&ready_list)+1);
-  int load_avg = CONVERT_TO_FIXPOINT(load_avg);
-  //load_avg = ((59/60)*load_avg) + ((1/60)*ready_threads);
-  load_avg = MULT(DIV(59,60),load_avg) + MULT(DIV(1,60),ready_threads);
+  // size_t ready_threads = list_size(&ready_list); // ready_threads is int
 
-  load_avg = CONVERT_TO_INT(load_avg);
-  return load_avg*100;
+  // if (thread_current() != idle_thread){
+  //   ready_threads++;
+  // //   //printf("HERES THE READY THREAD NUMBER: %d\n", ready_threads);
+  // }
+  
+  // printf("LOAD_AVG before calculate:::  %d\n", load_avg);
+
+  /*  load_avg = (59/60)*load_avg + (1/60)*ready_threads  */
+  // load_avg = ADD(MULT(DIV(CONVERT_TO_FIX(59),CONVERT_TO_FIX(60)),load_avg),MULT_MIXED(DIV(CONVERT_TO_FIX(1),CONVERT_TO_FIX(60)), ready_threads));
+  // printf("Here's load_avg number --> %d\n", load_avg);
+
+  int temp = ROUND_TO_NEAREST(MULT_MIXED(load_avg,100));
+
+  return temp;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. 
     put in the formula in to calculate priority by using nice and recent_cpu*/
+
+void
+mlfqs_load_avg(void)
+{
+  int t1 = list_size(&ready_list);
+  if (thread_current() != idle_thread){
+    t1++;
+  }
+
+  int t2 = DIV_MIXED(CONVERT_TO_FIX(59),60);  
+  t2 = MULT(t2, load_avg);
+  t1 = DIV_MIXED(CONVERT_TO_FIX(t1), 60);
+  load_avg = ADD(t1,t2);
+  // printf("Here's load_avg number --> %d\n", load_avg);
+}
+
+
 int
 thread_get_recent_cpu (void)
 {
-  /*  */
-  int load_avg = CONVERT_TO_FIXPOINT(thread_get_load_avg());
-  int nice = CONVERT_TO_FIXPOINT(thread_current() -> niceness);
-  int recent_cpu = CONVERT_TO_FIXPOINT(thread_current() -> recent_cpu);
-  
-  // nice = CONVERT_TO_FIXPOINT(nice);
-  // recent_cpu = CONVERT_TO_FIXPOINT(recent_cpu);
+  int nice = thread_current() -> niceness;
+  int rec_cpu = thread_current() -> recent_cpu;
 
-  recent_cpu = MULT(DIV(MULT(2,load_avg), MULT(2,load_avg)+1), recent_cpu)+nice; 
-  //recent_cpu = (2*load_avg)/(2*load_avg+1)*(recent_cpu+nice);
-  
-  recent_cpu = CONVERT_TO_INT(recent_cpu);
-  nice = CONVERT_TO_INT(nice);
-  load_avg = CONVERT_TO_INT(load_avg);
+  /*  recent_cpu = (2*load_avg)/(2*load_avg + 1)*recent_cpu + nice  */
+  rec_cpu = ADD_MIXED(MULT_MIXED(DIV(MULT_MIXED(load_avg,2),ADD_MIXED(MULT_MIXED(load_avg,2),1)), rec_cpu),nice); 
 
-  return recent_cpu*100;
+  thread_current() -> recent_cpu = rec_cpu;
+
+  return ROUND_TO_NEAREST(MULT_MIXED(rec_cpu,100));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.

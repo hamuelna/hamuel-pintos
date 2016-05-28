@@ -217,17 +217,13 @@ timer_print_stats (void)
 void
 set_priority (struct thread *t)
 {
-  int recent_cpu  = t->recent_cpu;
+  int rec_cpu  = t->recent_cpu;
   int nice = t->niceness;
-  int prio = 0;
-  prio = CONVERT_TO_FIXPOINT(prio);
-  recent_cpu = CONVERT_TO_FIXPOINT(recent_cpu);
-  nice = CONVERT_TO_FIXPOINT(nice);
-  //prio = PRI_MAX-(recent_cpu/4)-(nice*2);
-  prio = PRI_MAX-DIV(recent_cpu,4)-MULT(nice,2);
-  prio = CONVERT_TO_INT(prio);
 
-  t -> priority = prio;
+  //prio = PRI_MAX-(recent_cpu/4)-(nice*2);
+  int prio = SUBT(SUBT(CONVERT_TO_FIX(PRI_MAX),MULT_MIXED(rec_cpu,4)),MULT_MIXED(CONVERT_TO_FIX(nice),2));
+
+  t -> priority = ROUND_TO_NEAREST(prio);
 }
 
 
@@ -235,6 +231,7 @@ set_priority (struct thread *t)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+  
   /*check the beginning of the list that the thread need to wake up yet or not 
   the invariant is that the list is always ordered from need to wake soon to need to be wake up later */
   if(!list_empty(&waiting_lst)){
@@ -262,18 +259,24 @@ timer_interrupt (struct intr_frame *args UNUSED)
     } 
   }
 
-  if (ticks%4 == 0){
-    thread_current()->recent_cpu+=4;
-    thread_foreach(set_priority,0);
-  }
-
-  if (timer_ticks()%TIMER_FREQ==0){
-    thread_get_load_avg();
-    thread_foreach(thread_get_recent_cpu,0);
-  }
-
   ticks++;
   thread_tick ();
+
+  if (thread_mlfqs){
+
+    if (timer_ticks()%TIMER_FREQ == 0){
+    // thread_get_load_avg();
+      mlfqs_load_avg();
+      thread_foreach(thread_get_recent_cpu,0);
+    }
+
+    if (ticks%4 == 0){
+      thread_current()->recent_cpu+=4;
+      thread_foreach(set_priority,0);
+    }
+  }
+ 
+
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

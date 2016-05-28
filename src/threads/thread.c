@@ -423,9 +423,7 @@ thread_get_load_avg (void)
   // load_avg = ADD(MULT(DIV(CONVERT_TO_FIX(59),CONVERT_TO_FIX(60)),load_avg),MULT_MIXED(DIV(CONVERT_TO_FIX(1),CONVERT_TO_FIX(60)), ready_threads));
   // printf("Here's load_avg number --> %d\n", load_avg);
 
-  int temp = ROUND_TO_NEAREST(MULT_MIXED(load_avg,100));
-
-  return temp;
+  return ROUND_TO_NEAREST(MULT_MIXED(load_avg,100));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. 
@@ -449,16 +447,39 @@ calculate_load_avg(void)
 int
 thread_get_recent_cpu (void)
 {
-  int nice = thread_current() -> niceness;
-  int rec_cpu = thread_current() -> recent_cpu;
+  // int nice = thread_current() -> niceness;
+  // int rec_cpu = thread_current() -> recent_cpu;
 
-  /*  recent_cpu = (2*load_avg)/(2*load_avg + 1)*recent_cpu + nice  */
-  rec_cpu = ADD_MIXED(MULT_MIXED(DIV(MULT_MIXED(load_avg,2),ADD_MIXED(MULT_MIXED(load_avg,2),1)), rec_cpu),nice); 
+  // /*  recent_cpu = (2*load_avg)/(2*load_avg + 1)*recent_cpu + nice  */
+  // rec_cpu = ADD_MIXED(MULT_MIXED(DIV(MULT_MIXED(load_avg,2),ADD_MIXED(MULT_MIXED(load_avg,2),1)), rec_cpu),nice); 
 
-  thread_current() -> recent_cpu = rec_cpu;
+  // thread_current() -> recent_cpu = rec_cpu;
 
-  return ROUND_TO_NEAREST(MULT_MIXED(rec_cpu,100));
+  // return ROUND_TO_NEAREST(MULT_MIXED(rec_cpu,100));
+
+  return ROUND_TO_NEAREST(MULT_MIXED(thread_current() -> recent_cpu, 100));
 }
+
+void
+calculate_recent_cpu(struct thread *t, void *aux){
+  if (t == idle_thread){
+    return;
+  }
+  int t1 = MULT_MIXED(load_avg, 2);
+  t1 = DIV(t1, ADD_MIXED(t1,1));
+  t1 = MULT(t1, t -> recent_cpu);
+  t -> recent_cpu = ADD_MIXED(t1, t -> niceness);
+}
+
+void mlfqs_increment(void){
+  if (thread_current() == idle_thread){
+    return;
+  }
+
+  thread_current() -> recent_cpu = ADD_MIXED(thread_current() -> recent_cpu,1);
+}
+
+
 
 /* Idle thread.  Executes when no other thread is ready to run.
    The idle thread is initially put on the ready list by

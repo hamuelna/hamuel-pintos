@@ -12,7 +12,7 @@
 #define ADD_MIXED(a,n) (a + (n*NPOINT))
 
 #define SUBT(a,b) (a-b)
-#define SUBT(a,n) (a - (n*NPOINT))
+#define SUBT_MIXED(a,n) (a - (n*NPOINT))
 
 #define MULT(a,b) (((int64_t)a)*b)/NPOINT
 #define MULT_MIXED(a,n) (a*n)

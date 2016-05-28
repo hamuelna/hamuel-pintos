@@ -264,10 +264,12 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
   if (thread_mlfqs){
 
+    mlfqs_increment();
+
     if (timer_ticks()%TIMER_FREQ == 0){
     // thread_get_load_avg();
       calculate_load_avg();
-      thread_foreach(thread_get_recent_cpu,0);
+      thread_foreach(calculate_recent_cpu,0);
     }
 
     if (ticks%4 == 0){

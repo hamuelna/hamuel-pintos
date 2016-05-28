@@ -266,7 +266,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
     if (timer_ticks()%TIMER_FREQ == 0){
     // thread_get_load_avg();
-      mlfqs_load_avg();
+      calculate_load_avg();
       thread_foreach(thread_get_recent_cpu,0);
     }
 

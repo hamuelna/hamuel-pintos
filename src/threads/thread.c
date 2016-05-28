@@ -432,15 +432,14 @@ thread_get_load_avg (void)
     put in the formula in to calculate priority by using nice and recent_cpu*/
 
 void
-mlfqs_load_avg(void)
+calculate_load_avg(void)
 {
   int t1 = list_size(&ready_list);
   if (thread_current() != idle_thread){
     t1++;
   }
 
-  int t2 = DIV_MIXED(CONVERT_TO_FIX(59),60);  
-  t2 = MULT(t2, load_avg);
+  int t2 = MULT(DIV_MIXED(CONVERT_TO_FIX(59),60), load_avg);
   t1 = DIV_MIXED(CONVERT_TO_FIX(t1), 60);
   load_avg = ADD(t1,t2);
   // printf("Here's load_avg number --> %d\n", load_avg);

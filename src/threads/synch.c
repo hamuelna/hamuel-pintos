@@ -194,7 +194,7 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-  // struct thread *tt = lock->holder;
+  struct thread *tt = lock->holder;
   // if(tt->priority < thread_current()->priority){
   //   //donate
   //    tt->prev_priority = tt->priority;

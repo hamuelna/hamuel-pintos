@@ -145,7 +145,8 @@ the prev_priority number will be greater than zero if not it will be -1, after w
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
 
-when some thread is setting the priority, we lock the current thread pointer to avoid collision. Then after we finish setting the priority, we unlock the current thread pointer to allow the next thread to be set priority.
+we set the interrupt off when we run thread_set_priority 
+
 
 ---- RATIONALE ----
 

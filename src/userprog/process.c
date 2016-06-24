@@ -28,6 +28,8 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
+  //split filename string into argument and execute by spaces by using
+  //strtok_r() after that
   char *fn_copy;
   tid_t tid;
 
@@ -37,6 +39,28 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
+  /*
+    place each split string into the top of the stack of the memory
+    maybe use active dir or manipulate on palloc_get_page
+    after that push the address of each argument into the stack after the
+    address of the data can be push any order 
+
+    lastly push argv and argc into the page stack 
+
+    MUST start the stack AT THE TOP of the user virtual memory space 
+  */
+   char *stack, *st_stack = palloc_get_page(0)
+   char *token, *save_ptr;
+   uint16_t
+   int level = 0;
+   for (token = strtok_r (fn_copy, " ", &save_ptr); token != NULL;
+        token = strtok_r (NULL, " ", &save_ptr)){
+    //push each token into the stack
+    *stack = token;
+    stack+= strlen(token); 
+
+   }
+
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
@@ -88,6 +112,9 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  while(true){
+
+  }
   return -1;
 }
 

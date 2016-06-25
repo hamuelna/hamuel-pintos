@@ -159,14 +159,37 @@ The child will put it return value into its parent struct thread not their own s
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
-We will run a monitor lock 
+We will run a monitor lock on the parent process passing the conditional variable down to the child process
+before the child process exit release the conditional variable to allow the parent process to continue this will avoid the
+parent not waiting for the child process to exit first Before child exit the lock will not get release and the parent need 
+to wait If P cannot terminate without waiting due to the lock where P need to always wait
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+We use this way because it is faster and it take advantage of the MMU on the CPU 
+eventhough the implementation is a bit complicated 
+
+(we use the second method where we modify the exception in page fault )
+and use the extra piece of code given where there is an assembly instruction 
+to fetch the memory from user
+
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
+
+Advantage is that it is easy to implement any process can access the fd 
+therefore it support concurrent access if other process or thread want to read from the 
+same place
+
+Disadvantage there could be race condition if the two processes write to the same fd 
+therefore the user need to synchronize the write system call themselves (or we could
+synchronize it for the user). Looping through the whole list might take a lot of time 
+if the user open or create a lot of files if we keep a list per process it will be 
+faster to search for the corresponding fd but that would not allow concurrent read 
+expect we if open the fd again for the same file making synchronization harder 
+since there are 2 fd opening the same file 
+
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?

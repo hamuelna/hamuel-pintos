@@ -39,31 +39,9 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-  /*
-    place each split string into the top of the stack of the memory
-    maybe use active dir or manipulate on palloc_get_page
-    after that push the address of each argument into the stack after the
-    address of the data can be push any order 
-
-    lastly push argv and argc into the page stack 
-
-    MUST start the stack AT THE TOP of the user virtual memory space 
-  */
-   char *stack, *st_stack = palloc_get_page(0)
-   char *token, *save_ptr;
-   uint16_t
-   int level = 0;
-   for (token = strtok_r (fn_copy, " ", &save_ptr); token != NULL;
-        token = strtok_r (NULL, " ", &save_ptr)){
-    //push each token into the stack
-    *stack = token;
-    stack+= strlen(token); 
-
-   }
-
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (file_name, PRI_MAX, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -142,6 +120,7 @@ process_exit (void)
       pagedir_destroy (pd);
     }
 }
+
 
 /* Sets up the CPU for running user code in the current
    thread.
@@ -464,7 +443,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        *esp = PHYS_BASE - 12;
       else
         palloc_free_page (kpage);
     }

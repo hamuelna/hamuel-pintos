@@ -43,15 +43,15 @@ To avoid overflowing the stack page, we set limit to the argument's line so that
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
 
-The buffer of func strtok() is global, which is not safe for the kernel because everyone can use that buffer. So it's gonna be messed up if that same buffer is used by many function. So it's better to implement strtok_r() to have each buffer for each function.
+The buffer of func strtok() is global, which is not safe for the kernel because everyone can use that buffer. So it's gonna be messed up if that same buffer is used by many thread. So it's better to implement strtok_r() to have each buffer for each function. (we can assign thread specific buffer pointer in str_tok)
 
 
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
 
-1. Shell avoid the error condition by checking the command before it gets to kernel
-2. It always decrease kernel's workload
+1. Avoid Kernel panick which will crash the whole system (like windows blue screen of death)
+2. Avoid Context Switch which will make the system faster and more responsive
 
 			     SYSTEM CALLS
 			     ============
@@ -62,14 +62,47 @@ The buffer of func strtok() is global, which is not safe for the kernel because 
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+struct list file_des 
+	- fd (give it a file descriptor)
+	- struct *file (pointer to the data on the disk)
+	- char *f_name name of the file
+
+This struct is design to link the fd with the corresponding opening file  
+
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
+
+The file descriptor is unique within the whole OS because we use a global variable 
+struct list call file_des that contain all the information between the opened file and
+the newly assign file descriptor 
 
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
+
+***Reading***
+
+For Reading we will initially check that the fd is equal to zero or not if yes we will run a 
+while loop on input_getc to pull the character from the keyboard buffer into the buffer parameter 
+with the specified size and return the read size back to the return pointer of the stack for other fd
+
+For other fd that is not one or zero, First we will check through the file_des list for the parse in fd number if we cannot found the fd number 
+we will return -1 if we can find the fd number in the file_des list we will run the filesys_read() on the file->file to actually read
+the data on disk and copy all of its content to the parse in buffer after that return to the stack return pointer 
+how much we have read the disk
+
+***Writing***
+
+In writing we will initially check the fd that the fd is one or not if it is we will flush the whole buffer into 
+the putbuf() function, this we will write all of the char elements to the console since fd 1 is reserve for writing 
+to the command line after that return the size 
+
+For other fd that is not one or zero again we will the file_des list for the corresponding fd after that we will run
+filesys_write() on the file_des->file to write the data from the buffer on to the disk and then return the size read 
+back into the return stack pointer we will write untill we reach EOF 
+
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -80,6 +113,14 @@ The buffer of func strtok() is global, which is not safe for the kernel because 
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
+
+At first check the child process, check if the child process is actually the child of the process that call wait 
+in process_wait we modify the thread struct to keep the tid_t of the child too therefore we can initially check that
+first if we are ask to wait we will put the parent process back into the scheduler when the time slice come for it to run
+we will check that the child process have already finishes it job already by checking the ready_list queue if the child 
+have already terminate the child will no longer be in the ready_list therefore in wait() we will return the pid pass from the child
+exit status (that can be kept at the modified struct thread) and return it to the stack pointer that is when the parent process can terminate
+
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -95,12 +136,21 @@ The buffer of func strtok() is global, which is not safe for the kernel because 
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+At first we will check that the pointer is below the PHYS_BASE this is an initial step to ensure that the pointer 
+is valid (that will be done before passing it into the system call) if the pointer does not pass these validation
+we will run thread_exit() immedietly and freeing everything before exit. Furthermore we don't use the pointer directly
+we assign to another pointer to handle it in order to avoid unexpected behavior 
+
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
 >> fails, so it cannot return before the new executable has completed
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
+
+The status number will be kept at the struct thread when exec fail or finishes it will exit 
+the parent thread that call exec can pull the return value from the thread struct directly 
+The child will put it return value into its parent struct thread not their own struct thread
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -109,6 +159,7 @@ The buffer of func strtok() is global, which is not safe for the kernel because 
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+We will run a monitor lock 
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the

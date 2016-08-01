@@ -147,6 +147,9 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+  uint8_t prev_val = f->eax;
+  f->eax = 0xffffffff;
+  f->eip = prev_val;
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to

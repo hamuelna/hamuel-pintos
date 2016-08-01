@@ -28,8 +28,6 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
-  //split filename string into argument and execute by spaces by using
-  //strtok_r() after that
   char *fn_copy;
   tid_t tid;
 
@@ -39,28 +37,10 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-  /*
-    place each split string into the top of the stack of the memory
-    maybe use active dir or manipulate on palloc_get_page
-    after that push the address of each argument into the stack after the
-    address of the data can be push any order 
 
-    lastly push argv and argc into the page stack 
-
-    MUST start the stack AT THE TOP of the user virtual memory space 
-  */
-   char *stack, *st_stack = palloc_get_page(0)
-   char *token, *save_ptr;
-   uint16_t
-   int level = 0;
-   for (token = strtok_r (fn_copy, " ", &save_ptr); token != NULL;
-        token = strtok_r (NULL, " ", &save_ptr)){
-    //push each token into the stack
-    *stack = token;
-    stack+= strlen(token); 
-
-   }
-
+  // Get File Name
+  char *save_ptr;
+  file_name = strtok_r (file_name," ",&save_ptr);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
@@ -106,15 +86,12 @@ start_process (void *file_name_)
    child of the calling process, or if process_wait() has already
    been successfully called for the given TID, returns -1
    immediately, without waiting.
-
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  while(true){
-
-  }
+  while(!thread_current()->exited){}
   return -1;
 }
 
@@ -124,6 +101,8 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+
+  printf("%s: exit(%d)\n",cur->name,0);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -222,7 +201,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, char *args);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -249,7 +228,14 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  char* filenamecopy = malloc(strlen(file_name)+1);
+  strlcpy(filenamecopy, file_name, strlen(file_name)+1);
+  
+  char *save_ptr;
+  filenamecopy = strtok_r(filenamecopy," ",&save_ptr);
+  file = filesys_open(filenamecopy);
+  free(filenamecopy);
+  
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
@@ -329,7 +315,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp,file_name))
     goto done;
 
   /* Start address. */
@@ -395,15 +381,11 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
 /* Loads a segment starting at offset OFS in FILE at address
    UPAGE.  In total, READ_BYTES + ZERO_BYTES bytes of virtual
    memory are initialized, as follows:
-
         - READ_BYTES bytes at UPAGE must be read from FILE
           starting at offset OFS.
-
         - ZERO_BYTES bytes at UPAGE + READ_BYTES must be zeroed.
-
    The pages initialized by this function must be writable by the
    user process if WRITABLE is true, read-only otherwise.
-
    Return true if successful, false if a memory allocation error
    or disk read error occurs. */
 static bool
@@ -454,7 +436,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp) 
+setup_stack (void **esp, char * file_name) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -468,6 +450,56 @@ setup_stack (void **esp)
       else
         palloc_free_page (kpage);
     }
+
+  char *token;
+  char *save_ptr;
+  int argc = 0;
+  int i;
+
+  // Make copy of args
+  char *filenamecopy = malloc(strlen(file_name)+1);
+  strlcpy (filenamecopy, file_name, strlen(file_name)+1);
+
+  // Count num of args
+  for (token = strtok_r (filenamecopy, " ", &save_ptr); token != NULL;
+    token = strtok_r (NULL, " ", &save_ptr))
+    argc++;
+
+  // Getting actual args
+  int *argv = malloc(argc*sizeof(int *));
+
+  for (token = strtok_r (file_name, " ", &save_ptr),i=0; token != NULL;
+    token = strtok_r (NULL, " ", &save_ptr),i++)
+    {
+      // Extend stack to put current args
+      *esp -= strlen(token) + 1;
+      memcpy(*esp,token,strlen(token)+1);
+
+      argv[i]=*esp;
+    }
+  // End of args indicator
+  *esp-=sizeof(int);
+  memset(*esp,0,sizeof(int));
+
+  // Put the current arg addresses
+  for(i=argc-1;i>=0;i--){
+    *esp-=sizeof(int);
+    memcpy(*esp,&argv[i],sizeof(int *));
+  }
+
+  // Point to arg addresses 
+  int pt = *esp;
+  *esp-=sizeof(int);
+  memcpy(*esp,&pt,sizeof(int *));
+
+  // Num of args
+  *esp-=sizeof(int);
+  memcpy(*esp,&argc,sizeof(int));
+
+  // End of stack indicator
+  *esp-=sizeof(int);
+  memset(*esp,0,sizeof(int));
+
   return success;
 }
 

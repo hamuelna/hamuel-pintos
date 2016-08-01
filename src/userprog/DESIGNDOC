@@ -8,9 +8,14 @@
 
 >> Fill in the names and email addresses of your group members.
 
+<<<<<<< HEAD
 FirstName LastName <email@domain.example>
 FirstName LastName <email@domain.example>
 FirstName LastName <email@domain.example>
+=======
+Worapol Boontanonda <agentzh2m@gmail.com> 5780431
+Nattakarn Klongyut <nattakarn.kl@gmail.com> 5780130
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 
 ---- PRELIMINARIES ----
 
@@ -36,14 +41,33 @@ FirstName LastName <email@domain.example>
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
 
+<<<<<<< HEAD
+=======
+We pass the command line to process_exec() which will be run in start_process(). Then use the func strtok_r() to separate the command into parts. Then put each part into the stack in order. First in, last out.
+To avoid overflowing the stack page, we set limit to the argument's line so that it won't overflow. 
+
+
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
 
+<<<<<<< HEAD
+=======
+The buffer of func strtok() is global, which is not safe for the kernel because everyone can use that buffer. So it's gonna be messed up if that same buffer is used by many thread. So it's better to implement strtok_r() to have each buffer for each function. (we can assign thread specific buffer pointer in str_tok)
+
+
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
 
+<<<<<<< HEAD
+=======
+1. Avoid Kernel panick which will crash the whole system (like windows blue screen of death)
+2. Avoid Context Switch which will make the system faster and more responsive
+
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 			     SYSTEM CALLS
 			     ============
 
@@ -53,15 +77,57 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+<<<<<<< HEAD
+=======
+struct list file_des 
+	- fd (give it a file descriptor)
+	- struct *file (pointer to the data on the disk)
+	- char *f_name name of the file
+
+This struct is design to link the fd with the corresponding opening file  
+
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
 
+<<<<<<< HEAD
+=======
+The file descriptor is unique within the whole OS because we use a global variable 
+struct list call file_des that contain all the information between the opened file and
+the newly assign file descriptor 
+
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
 
+<<<<<<< HEAD
+=======
+***Reading***
+
+For Reading we will initially check that the fd is equal to zero or not if yes we will run a 
+while loop on input_getc to pull the character from the keyboard buffer into the buffer parameter 
+with the specified size and return the read size back to the return pointer of the stack for other fd
+
+For other fd that is not one or zero, First we will check through the file_des list for the parse in fd number if we cannot found the fd number 
+we will return -1 if we can find the fd number in the file_des list we will run the filesys_read() on the file->file to actually read
+the data on disk and copy all of its content to the parse in buffer after that return to the stack return pointer 
+how much we have read the disk
+
+***Writing***
+
+In writing we will initially check the fd that the fd is one or not if it is we will flush the whole buffer into 
+the putbuf() function, this we will write all of the char elements to the console since fd 1 is reserve for writing 
+to the command line after that return the size 
+
+For other fd that is not one or zero again we will the file_des list for the corresponding fd after that we will run
+filesys_write() on the file_des->file to write the data from the buffer on to the disk and then return the size read 
+back into the return stack pointer we will write untill we reach EOF 
+
+
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
 >> and the greatest possible number of inspections of the page table
@@ -72,6 +138,17 @@ FirstName LastName <email@domain.example>
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
 
+<<<<<<< HEAD
+=======
+At first check the child process, check if the child process is actually the child of the process that call wait 
+in process_wait we modify the thread struct to keep the tid_t of the child too therefore we can initially check that
+first if we are ask to wait we will put the parent process back into the scheduler when the time slice come for it to run
+we will check that the child process have already finishes it job already by checking the ready_list queue if the child 
+have already terminate the child will no longer be in the ready_list therefore in wait() we will return the pid pass from the child
+exit status (that can be kept at the modified struct thread) and return it to the stack pointer that is when the parent process can terminate
+
+
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
 >> process to be terminated.  System calls are fraught with such
@@ -86,6 +163,14 @@ FirstName LastName <email@domain.example>
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+<<<<<<< HEAD
+=======
+At first we will check that the pointer is below the PHYS_BASE this is an initial step to ensure that the pointer 
+is valid (that will be done before passing it into the system call) if the pointer does not pass these validation
+we will run thread_exit() immedietly and freeing everything before exit. Furthermore we don't use the pointer directly
+we assign to another pointer to handle it in order to avoid unexpected behavior 
+
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
@@ -93,6 +178,13 @@ FirstName LastName <email@domain.example>
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
+<<<<<<< HEAD
+=======
+The status number will be kept at the struct thread when exec fail or finishes it will exit 
+the parent thread that call exec can pull the return value from the thread struct directly 
+The child will put it return value into its parent struct thread not their own struct thread
+
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
 >> calls wait(C) before C exits?  After C exits?  How do you ensure
@@ -100,14 +192,47 @@ FirstName LastName <email@domain.example>
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+<<<<<<< HEAD
+=======
+We will run a monitor lock on the parent process passing the conditional variable down to the child process
+before the child process exit release the conditional variable to allow the parent process to continue this will avoid the
+parent not waiting for the child process to exit first Before child exit the lock will not get release and the parent need 
+to wait If P cannot terminate without waiting due to the lock where P need to always wait
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+<<<<<<< HEAD
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
+=======
+We use this way because it is faster and it take advantage of the MMU on the CPU 
+eventhough the implementation is a bit complicated 
+
+(we use the second method where we modify the exception in page fault )
+and use the extra piece of code given where there is an assembly instruction 
+to fetch the memory from user
+
+>> B10: What advantages or disadvantages can you see to your design
+>> for file descriptors?
+
+Advantage is that it is easy to implement any process can access the fd 
+therefore it support concurrent access if other process or thread want to read from the 
+same place
+
+Disadvantage there could be race condition if the two processes write to the same fd 
+therefore the user need to synchronize the write system call themselves (or we could
+synchronize it for the user). Looping through the whole list might take a lot of time 
+if the user open or create a lot of files if we keep a list per process it will be 
+faster to search for the corresponding fd but that would not allow concurrent read 
+expect we if open the fd again for the same file making synchronization harder 
+since there are 2 fd opening the same file 
+
+
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
 
@@ -133,4 +258,8 @@ the quarter.
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students, either for future quarters or the remaining projects?
 
+<<<<<<< HEAD
 >> Any other comments?
+=======
+>> Any other comments?
+>>>>>>> ead89c28039a5afc73d3a96d65709d0fc5831d35
